@@ -1,3 +1,6 @@
+#![allow(unused_macros)]
+#![allow(unused_imports)]
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ErrorKind {
     UnexpectedInput,
@@ -34,6 +37,7 @@ pub enum TokenKind {
     NullLiteral,
     BooleanLiteral,
     StringLiteral,
+    RegularExpressionLiteral,
 
     IdentifierName,
     PrivateIdentifier,
@@ -46,6 +50,7 @@ pub struct Token {
 }
 
 impl Token {
+    #[allow(dead_code)]
     pub(crate) fn one(kind: TokenKind) -> Token {
         Token { kind, len: 1 }
     }

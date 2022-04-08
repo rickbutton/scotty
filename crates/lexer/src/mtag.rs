@@ -19,6 +19,7 @@ pub(crate) struct SingleIter<'a> {
     x: usize,
 }
 impl<'a> SingleIter<'a> {
+    #[allow(dead_code)]
     pub(crate) fn new(trie: &'a MtagTrie, x: usize) -> Self {
         SingleIter { trie, x }
     }

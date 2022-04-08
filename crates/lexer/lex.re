@@ -13,6 +13,7 @@ macro_rules! emit_token {
     }
 }
 
+#[allow(dead_code)]
 fn yydebug(state: usize, c: u8) {
     println!("state: {} char: {} hex: {:02x}", state, char::from(c), c);
 }
@@ -27,6 +28,7 @@ struct Lexer<'s> {
 }
 
 impl<'s> Lexer<'s> {
+    #[allow(dead_code)]
     pub fn new(s: &'s [u8]) -> Self {
         Lexer { s, errors: vec![], token_start: 0, cursor: 0, mark: 0, }
     }
@@ -34,7 +36,7 @@ impl<'s> Lexer<'s> {
 
 fn hex_escape_value(s: &[u8]) -> u32 {
     let mut value: u32 = 0;
-    for (i, b) in s.iter().enumerate() {
+    for b in s.iter() {
         let byte = *b;
         let c = byte as char;
         let v = match c {
@@ -69,7 +71,7 @@ impl<'s> Iterator for Lexer<'s> {
 
         /*!stags:re2c format = 'let mut @@{tag} = NONE;'; */
         const NONE: usize = std::usize::MAX;
-        let (mut id_hash, mut idstart_hex0, mut idstart_hex1);
+        let (id_hash, mut idstart_hex0, idstart_hex1);
         
         /*!mtags:re2c format = 'let mut @@ = mtag::MTAG_ROOT;'; */
         let (idcont_hex0, idcont_hex1);
@@ -202,7 +204,26 @@ impl<'s> Iterator for Lexer<'s> {
                 return emit_token!(self, StringLiteral);
             }
 
-            // 12.8.5 Regular Expression Literals TODO
+            // 12.8.5 Regular Expression Literals
+            RegularExpressionNonTerminator = [^\n\r\u2028\u2029];
+            RegularExpressionBackslashSequence = "\\" RegularExpressionNonTerminator;
+            RegularExpressionClassChar = (RegularExpressionNonTerminator \ [\\\]]) |
+                                         RegularExpressionBackslashSequence;
+            RegularExpressionClass = "[" (RegularExpressionClassChar*) "]";
+            RegularExpressionFirstChar = (RegularExpressionNonTerminator \ [*\\/[]) |
+                                         RegularExpressionBackslashSequence |
+                                         RegularExpressionClass;
+            RegularExpressionChar = (RegularExpressionNonTerminator \ [\\/[]) |
+                                    RegularExpressionBackslashSequence |
+                                    RegularExpressionClass;
+            RegularExpressionFlags = IdentifierPartChar*;
+            RegularExpressionBody = RegularExpressionFirstChar (RegularExpressionChar*);
+            RegularExpressionLiteral = "/" RegularExpressionBody "/" RegularExpressionFlags;
+            RegularExpressionLiteral {
+                return emit_token!(self, RegularExpressionLiteral);
+            }
+
+
             // 12.8.6 Template Literals TODO
             // 12.8.7 Punctuation TODO
 
@@ -263,5 +284,13 @@ fn string() {
     let str = "'hello world'";
     let mut lexer = Lexer::new(str.as_bytes());
     assert_eq!(lexer.by_ref().collect::<Vec<_>>(), vec![ token!(StringLiteral, 13), ]);
+    assert_eq!(&lexer.errors, &vec![]);
+}
+
+#[test]
+fn regex() {
+    let str = "/hello world/ufo";
+    let mut lexer = Lexer::new(str.as_bytes());
+    assert_eq!(lexer.by_ref().collect::<Vec<_>>(), vec![ token!(RegularExpressionLiteral, 16), ]);
     assert_eq!(&lexer.errors, &vec![]);
 }
